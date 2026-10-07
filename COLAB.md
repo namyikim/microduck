@@ -55,3 +55,14 @@ Colab에서 **Runtime > Change runtime type > A100 GPU**를 선택한 뒤 위에
 - `.github/workflows/import-upstream.yml`
 
 가져온 upstream commit은 `UPSTREAM.md`에 기록합니다.
+
+
+## 학습 진행률 표시
+
+학습 로그의 `Learning iteration X/Y`를 읽어 다음과 같은 퍼센트 진행바를 함께 표시합니다.
+
+```text
+[MicroDuck progress] [██████████░░░░░░░░░░░░░░░░░░░░]  33.3%  (2000/6000)
+```
+
+RSL-RL 자체 로그의 `ETA`도 계속 표시되므로 퍼센트와 예상 남은 시간을 함께 확인할 수 있습니다.
