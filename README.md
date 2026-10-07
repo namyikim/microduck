@@ -4,7 +4,7 @@
 > See **[COLAB.md](COLAB.md)** or open
 > **[MicroDuck_Colab_A100.ipynb](MicroDuck_Colab_A100.ipynb)**.
 
-# Microduck RL
+[![Open JumpSpin In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/namyikim/microduck/blob/main/MicroDuck_JumpSpin_A100.ipynb)\n\n# Microduck RL
 
 <img width="2215" height="884" alt="image" src="https://github.com/user-attachments/assets/5db7cc83-b3ce-4f7c-83f0-0572a63baed7" />
 
