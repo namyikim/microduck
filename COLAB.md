@@ -66,3 +66,23 @@ Colab에서 **Runtime > Change runtime type > A100 GPU**를 선택한 뒤 위에
 ```
 
 RSL-RL 자체 로그의 `ETA`도 계속 표시되므로 퍼센트와 예상 남은 시간을 함께 확인할 수 있습니다.
+
+## 실시간 학습 로그
+
+학습 셀은 line-by-line streaming으로 실행되고, Python/RSL-RL 출력도
+unbuffered 모드로 강제합니다. 따라서 다음과 같은 로그가 셀 아래에 즉시 나타납니다.
+
+```text
+Learning iteration 1234/6000
+[MicroDuck progress] [██████░░░░░░░░░░░░░░░░░░░░░░]  20.6%  (1235/6000)
+ETA: ...
+```
+
+동시에 동일한 로그를 Google Drive에도 저장합니다.
+
+```text
+MyDrive/microduck-training/training.log
+```
+
+기존 버전의 노트북을 이미 실행 중이라 출력이 비어 있다면, 현재 셀을 중지한 뒤
+저장소를 최신으로 pull하고 다시 실행하면 최신 checkpoint에서 자동 resume됩니다.
