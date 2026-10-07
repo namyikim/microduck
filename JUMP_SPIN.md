@@ -1,4 +1,4 @@
-# MicroDuck Jump Spin 360
+[![Open JumpSpin In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/namyikim/microduck/blob/main/MicroDuck_JumpSpin_A100.ipynb)\n\n# MicroDuck Jump Spin 360
 
 Experimental RL task for a standing jump followed by an airborne yaw rotation
 and a controlled two-foot landing.
