@@ -184,5 +184,9 @@ fi
 printf 'Command: '
 printf '%q ' "${CMD[@]}"
 echo
-"${CMD[@]}"
+
+# Preserve the normal RSL-RL log while adding a compact percentage progress bar.
+# pipefail is enabled at the top of this script, so train failures still propagate.
+"${CMD[@]}" 2>&1 | python3 "$REPO_DIR/scripts/progress_filter.py"
+
 echo "Training command finished."
