@@ -62,6 +62,11 @@ def main() -> None:
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Remove leftovers from an interrupted previous render. Stable trial files
+    # are overwritten below only after fresh videos have completed.
+    for stale in output_dir.glob("jump-spin-episode-*.mp4"):
+        stale.unlink(missing_ok=True)
+
     if not checkpoint.exists():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint}")
     if args.trials < 1:
