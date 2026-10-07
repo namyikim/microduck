@@ -1,0 +1,133 @@
+name: Import upstream microduck_rl
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/import-upstream.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-upstream-microduck-rl
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preserve local Colab integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/microduck-local/scripts
+          mkdir -p /tmp/microduck-local/.github/workflows
+
+          cp COLAB.md /tmp/microduck-local/COLAB.md
+          cp MicroDuck_Colab_A100.ipynb /tmp/microduck-local/MicroDuck_Colab_A100.ipynb
+          cp scripts/setup_colab.sh /tmp/microduck-local/scripts/setup_colab.sh
+          cp scripts/train_colab.sh /tmp/microduck-local/scripts/train_colab.sh
+          cp .github/workflows/import-upstream.yml /tmp/microduck-local/.github/workflows/import-upstream.yml
+
+      - name: Clone official upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/microduck-upstream
+          git clone \
+            --depth 1 \
+            --branch develop \
+            https://github.com/pollen-robotics/microduck_rl.git \
+            /tmp/microduck-upstream
+
+          git -C /tmp/microduck-upstream rev-parse HEAD | tee /tmp/upstream-sha
+
+      - name: Replace source tree with upstream snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rsync -a --delete \
+            --exclude='.git/' \
+            /tmp/microduck-upstream/ ./
+
+          mkdir -p scripts .github/workflows
+
+          cp /tmp/microduck-local/COLAB.md COLAB.md
+          cp /tmp/microduck-local/MicroDuck_Colab_A100.ipynb MicroDuck_Colab_A100.ipynb
+          cp /tmp/microduck-local/scripts/setup_colab.sh scripts/setup_colab.sh
+          cp /tmp/microduck-local/scripts/train_colab.sh scripts/train_colab.sh
+          cp /tmp/microduck-local/.github/workflows/import-upstream.yml .github/workflows/import-upstream.yml
+
+      - name: Add local integration metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          UPSTREAM_SHA="$(cat /tmp/upstream-sha)"
+          IMPORTED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          cat > UPSTREAM.md <<EOF
+          # Upstream source
+
+          This repository contains a snapshot of the official MicroDuck RL repository.
+
+          - Repository: https://github.com/pollen-robotics/microduck_rl
+          - Branch: `develop`
+          - Commit: `${UPSTREAM_SHA}`
+          - Imported at: `${IMPORTED_AT}`
+
+          ## Updating
+
+          Run the **Import upstream microduck_rl** workflow from the Actions tab.
+          It replaces the upstream source snapshot while preserving the Colab-specific files
+          documented in [COLAB.md](COLAB.md).
+          EOF
+
+          cat > /tmp/colab-banner.md <<'EOF'
+          > [!NOTE]
+          > This repository tracks the official `pollen-robotics/microduck_rl` source and adds
+          > a Google Colab A100 training workflow with Drive checkpoint/resume support.
+          > See **[COLAB.md](COLAB.md)** or open
+          > **[MicroDuck_Colab_A100.ipynb](MicroDuck_Colab_A100.ipynb)**.
+
+          EOF
+
+          cat /tmp/colab-banner.md README.md > README.md.tmp
+          mv README.md.tmp README.md
+
+          cat >> .gitignore <<'EOF'
+
+          # namyikim/microduck local integration
+          .ipynb_checkpoints/
+          EOF
+
+      - name: Commit upstream snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          UPSTREAM_SHA="$(cat /tmp/upstream-sha)"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Already synchronized with upstream."
+            exit 0
+          fi
+
+          git commit -m "Import microduck_rl develop @ ${UPSTREAM_SHA:0:12}"
+          git push origin HEAD:main
