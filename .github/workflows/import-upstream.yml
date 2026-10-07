@@ -124,7 +124,36 @@ jobs:
           cat /tmp/colab-banner.md README.md > README.md.tmp
           mv README.md.tmp README.md
 
-          python3 -c 'from pathlib import Path; p=Path("pyproject.toml"); s=p.read_text(); a="[project.entry-points.\\\"mjlab.tasks\\\"]\\nmjlab_microduck = \\\"mjlab_microduck.tasks\\\"\\n"; l="mjlab_microduck_jump_spin = \\\"mjlab_microduck.jump_spin_plugin\\\"\\n"; assert l in s or a in s, "mjlab.tasks entrypoint anchor not found"; p.write_text(s if l in s else s.replace(a, a+l))'
+          if ! grep -q '^mjlab_microduck_jump_spin = ' pyproject.toml; then
+            sed -i '/^mjlab_microduck = "mjlab_microduck.tasks"$/a mjlab_microduck_jump_spin = "mjlab_microduck.jump_spin_plugin"' pyproject.toml
+          fi
+          grep -q '^mjlab_microduck_jump_spin = "mjlab_microduck.jump_spin_plugin"
+          cat >> .gitignore <<'EOF'
+
+          # namyikim/microduck local integration
+          .ipynb_checkpoints/
+          EOF
+
+      - name: Commit upstream snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          UPSTREAM_SHA="$(cat /tmp/upstream-sha)"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Already synchronized with upstream."
+            exit 0
+          fi
+
+          git commit -m "Import microduck_rl develop @ ${UPSTREAM_SHA:0:12}"
+          git push origin HEAD:main
+ pyproject.toml
 
           cat >> .gitignore <<'EOF'
 
