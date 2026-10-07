@@ -32,6 +32,8 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/microduck-local/scripts
           mkdir -p /tmp/microduck-local/.github/workflows
+          mkdir -p /tmp/microduck-local/src/mjlab_microduck/tasks
+          mkdir -p /tmp/microduck-local/tests
 
           cp COLAB.md /tmp/microduck-local/COLAB.md
           cp MicroDuck_Colab_A100.ipynb /tmp/microduck-local/MicroDuck_Colab_A100.ipynb
@@ -39,6 +41,11 @@ jobs:
           cp scripts/train_colab.sh /tmp/microduck-local/scripts/train_colab.sh
           cp scripts/progress_filter.py /tmp/microduck-local/scripts/progress_filter.py
           cp .github/workflows/import-upstream.yml /tmp/microduck-local/.github/workflows/import-upstream.yml
+          cp JUMP_SPIN.md /tmp/microduck-local/JUMP_SPIN.md
+          cp src/mjlab_microduck/jump_spin_plugin.py /tmp/microduck-local/src/mjlab_microduck/jump_spin_plugin.py
+          cp src/mjlab_microduck/tasks/jump_spin_mdp.py /tmp/microduck-local/src/mjlab_microduck/tasks/jump_spin_mdp.py
+          cp src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py /tmp/microduck-local/src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py
+          cp tests/test_jump_spin_cfg.py /tmp/microduck-local/tests/test_jump_spin_cfg.py
 
       - name: Clone official upstream
         shell: bash
@@ -62,7 +69,7 @@ jobs:
             --exclude='.git/' \
             /tmp/microduck-upstream/ ./
 
-          mkdir -p scripts .github/workflows
+          mkdir -p scripts .github/workflows src/mjlab_microduck/tasks tests
 
           cp /tmp/microduck-local/COLAB.md COLAB.md
           cp /tmp/microduck-local/MicroDuck_Colab_A100.ipynb MicroDuck_Colab_A100.ipynb
@@ -70,6 +77,11 @@ jobs:
           cp /tmp/microduck-local/scripts/train_colab.sh scripts/train_colab.sh
           cp /tmp/microduck-local/scripts/progress_filter.py scripts/progress_filter.py
           cp /tmp/microduck-local/.github/workflows/import-upstream.yml .github/workflows/import-upstream.yml
+          cp /tmp/microduck-local/JUMP_SPIN.md JUMP_SPIN.md
+          cp /tmp/microduck-local/src/mjlab_microduck/jump_spin_plugin.py src/mjlab_microduck/jump_spin_plugin.py
+          cp /tmp/microduck-local/src/mjlab_microduck/tasks/jump_spin_mdp.py src/mjlab_microduck/tasks/jump_spin_mdp.py
+          cp /tmp/microduck-local/src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py
+          cp /tmp/microduck-local/tests/test_jump_spin_cfg.py tests/test_jump_spin_cfg.py
 
       - name: Add local integration metadata
         shell: bash
@@ -107,6 +119,19 @@ jobs:
 
           cat /tmp/colab-banner.md README.md > README.md.tmp
           mv README.md.tmp README.md
+
+          python3 - <<'PY'
+from pathlib import Path
+p = Path("pyproject.toml")
+text = p.read_text()
+anchor = '[project.entry-points."mjlab.tasks"]\nmjlab_microduck = "mjlab_microduck.tasks"\n'
+line = 'mjlab_microduck_jump_spin = "mjlab_microduck.jump_spin_plugin"\n'
+if line not in text:
+    if anchor not in text:
+        raise SystemExit("mjlab.tasks entrypoint anchor not found")
+    text = text.replace(anchor, anchor + line)
+    p.write_text(text)
+PY
 
           cat >> .gitignore <<'EOF'
 
