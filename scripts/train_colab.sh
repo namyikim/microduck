@@ -35,7 +35,7 @@ mkdir -p "$LOCAL_LOGS" "$EXPERIMENT_DIR" "$BACKUP_LOGS"
 
 echo "== Restore previous logs from Drive =="
 if [[ -d "$BACKUP_LOGS/rsl_rl" ]]; then
-  rsync -a "$BACKUP_LOGS/" "$LOCAL_LOGS/"
+  rsync -a --exclude='*.partial' "$BACKUP_LOGS/" "$LOCAL_LOGS/"
 fi
 
 find_latest_checkpoint() {
@@ -62,21 +62,61 @@ if best is not None:
 PY
 }
 
+sync_checkpoint() {
+  local src="$1"
+  local rel dst tmp src_size_before src_mtime_before src_size_after src_mtime_after dst_size dst_mtime
+
+  rel="${src#"$LOCAL_LOGS/"}"
+  dst="$BACKUP_LOGS/$rel"
+  tmp="$dst.partial"
+
+  mkdir -p "$(dirname "$dst")"
+
+  src_size_before="$(stat -c '%s' "$src" 2>/dev/null || echo -1)"
+  src_mtime_before="$(stat -c '%Y' "$src" 2>/dev/null || echo -1)"
+
+  # 이미 같은 checkpoint가 Drive에 있으면 다시 복사하지 않는다.
+  if [[ -f "$dst" ]]; then
+    dst_size="$(stat -c '%s' "$dst" 2>/dev/null || echo -2)"
+    dst_mtime="$(stat -c '%Y' "$dst" 2>/dev/null || echo -2)"
+    if [[ "$src_size_before" == "$dst_size" && "$src_mtime_before" == "$dst_mtime" ]]; then
+      return 0
+    fi
+  fi
+
+  rm -f "$tmp"
+  cp -p "$src" "$tmp" || {
+    rm -f "$tmp"
+    return 0
+  }
+
+  src_size_after="$(stat -c '%s' "$src" 2>/dev/null || echo -3)"
+  src_mtime_after="$(stat -c '%Y' "$src" 2>/dev/null || echo -3)"
+
+  # 복사 중 source checkpoint가 바뀌었으면 partial copy를 버린다.
+  if [[ "$src_size_before" != "$src_size_after" || "$src_mtime_before" != "$src_mtime_after" ]]; then
+    rm -f "$tmp"
+    return 0
+  fi
+
+  if [[ "$(stat -c '%s' "$tmp" 2>/dev/null || echo -4)" != "$src_size_after" ]]; then
+    rm -f "$tmp"
+    return 0
+  fi
+
+  mv -f "$tmp" "$dst"
+}
+
 sync_once() {
   mkdir -p "$BACKUP_LOGS"
 
-  # Log/config files can be copied normally.
-  rsync -a --exclude='model_*.pt' "$LOCAL_LOGS/" "$BACKUP_LOGS/" || true
+  # Config/metric/log files.
+  rsync -a --exclude='model_*.pt' --exclude='*.partial' "$LOCAL_LOGS/" "$BACKUP_LOGS/" || true
 
-  # Checkpoints are copied only after they have been stable for a short time.
-  # A .partial file is atomically renamed after the copy completes.
+  # Checkpoints: 변경된 파일만 안전하게 복사한다.
   while IFS= read -r -d '' src; do
-    rel="${src#"$LOCAL_LOGS/"}"
-    dst="$BACKUP_LOGS/$rel"
-    mkdir -p "$(dirname "$dst")"
-    tmp="$dst.partial"
-    cp -f "$src" "$tmp" && mv -f "$tmp" "$dst"
-  done < <(find "$LOCAL_LOGS" -type f -name 'model_*.pt' -mmin +0.25 -print0 2>/dev/null)
+    sync_checkpoint "$src"
+  done < <(find "$LOCAL_LOGS" -type f -name 'model_*.pt' -print0 2>/dev/null)
 }
 
 sync_loop() {
@@ -114,8 +154,7 @@ if [[ -n "$LATEST" ]]; then
   N="${FILE#model_}"
   N="${N%.pt}"
 
-  # rsl_rl checkpoint naming is iteration-based; model_3249.pt corresponds
-  # to approximately 3250 completed updates.
+  # model_3249.pt => 약 3250 completed iterations.
   DONE=$((10#$N + 1))
   LOAD_RUN="$RUN_DIR"
   LOAD_CHECKPOINT="$FILE"
