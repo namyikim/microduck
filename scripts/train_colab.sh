@@ -130,11 +130,37 @@ if [[ -n "$LATEST" ]]; then
   RUN_DIR="$(basename "$(dirname "$LATEST")")"
   N="${FILE#model_}"
   N="${N%.pt}"
-  DONE=$((10#$N + 1))
-  LOAD_RUN="$RUN_DIR"
-  LOAD_CHECKPOINT="$FILE"
-  echo "Latest checkpoint: $LATEST"
-  echo "Completed approx.: $DONE iterations"
+
+  # Read the iteration stored inside the checkpoint instead of trusting only the filename.
+  CKPT_ITER="$(uv run python - "$LATEST" <<'PY'
+import sys
+import torch
+p = sys.argv[1]
+d = torch.load(p, map_location="cpu", weights_only=False)
+print(int(d.get("iter", -1)))
+PY
+)"
+  if [[ "$CKPT_ITER" =~ ^[0-9]+$ ]]; then
+    DONE="$CKPT_ITER"
+  else
+    DONE=$((10#$N))
+  fi
+
+  # mjlab treats load_run/load_checkpoint as regex patterns.
+  # Anchor and escape the exact names so the restored file is unambiguous.
+  LOAD_RUN="^$(printf '%s' "$RUN_DIR" | sed 's/[][\\.^$*+?{}|()]/\\\\&/g')$"
+  LOAD_CHECKPOINT="^$(printf '%s' "$FILE" | sed 's/[][\\.^$*+?{}|()]/\\\\&/g')$"
+
+  echo
+  echo "============================================================"
+  echo " RESUME CHECKPOINT FOUND"
+  echo "============================================================"
+  echo "Checkpoint path     : $LATEST"
+  echo "Checkpoint filename : $FILE"
+  echo "Checkpoint iter     : $DONE"
+  echo "Resume run dir      : $RUN_DIR"
+  echo "============================================================"
+  echo
 fi
 
 if (( DONE >= TARGET_ITERS )); then
@@ -177,9 +203,15 @@ if [[ -n "$LOAD_CHECKPOINT" ]]; then
     --agent.load-run "$LOAD_RUN"
     --agent.load-checkpoint "$LOAD_CHECKPOINT"
   )
-  echo "Resume from: $LOAD_RUN/$LOAD_CHECKPOINT"
+  echo "Resume requested from: $RUN_DIR/$FILE"
+  echo "IMPORTANT: mjlab must print '[INFO]: Loading model checkpoint from:' below."
 else
-  echo "Starting a fresh training run."
+  echo
+  echo "============================================================"
+  echo " WARNING: NO CHECKPOINT FOUND - STARTING FROM ZERO"
+  echo "============================================================"
+  echo "Drive search root: $BACKUP_LOGS/rsl_rl/$EXPERIMENT_NAME"
+  echo
 fi
 
 printf 'Command: '
