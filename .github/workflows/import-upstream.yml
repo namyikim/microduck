@@ -34,6 +34,7 @@ jobs:
           cp COLAB.md /tmp/microduck-local/COLAB.md
           cp JUMP_SPIN.md /tmp/microduck-local/JUMP_SPIN.md
           cp MicroDuck_Colab_A100.ipynb /tmp/microduck-local/MicroDuck_Colab_A100.ipynb
+          cp MicroDuck_JumpSpin_A100.ipynb /tmp/microduck-local/MicroDuck_JumpSpin_A100.ipynb
 
           cp scripts/setup_colab.sh /tmp/microduck-local/scripts/setup_colab.sh
           cp scripts/train_colab.sh /tmp/microduck-local/scripts/train_colab.sh
@@ -79,6 +80,7 @@ jobs:
           cp /tmp/microduck-local/COLAB.md COLAB.md
           cp /tmp/microduck-local/JUMP_SPIN.md JUMP_SPIN.md
           cp /tmp/microduck-local/MicroDuck_Colab_A100.ipynb MicroDuck_Colab_A100.ipynb
+          cp /tmp/microduck-local/MicroDuck_JumpSpin_A100.ipynb MicroDuck_JumpSpin_A100.ipynb
 
           cp /tmp/microduck-local/scripts/setup_colab.sh scripts/setup_colab.sh
           cp /tmp/microduck-local/scripts/train_colab.sh scripts/train_colab.sh
