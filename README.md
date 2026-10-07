@@ -1,3 +1,5 @@
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/namyikim/microduck/blob/main/MicroDuck_Colab_A100.ipynb)
+
 > [!NOTE]
 > This repository tracks the official `pollen-robotics/microduck_rl` source and adds
 > a Google Colab A100 training workflow with Drive checkpoint/resume support.
