@@ -14,6 +14,7 @@ SMOKE_TEST="${SMOKE_TEST:-1}"
 export WANDB_MODE="${WANDB_MODE:-offline}"
 export WANDB_SILENT="${WANDB_SILENT:-true}"
 export MUJOCO_GL="${MUJOCO_GL:-egl}"
+export PYTHONUNBUFFERED="1"
 
 if [[ ! -d "$REPO_DIR/.git" ]]; then
   echo "ERROR: $REPO_DIR 가 없습니다. setup_colab.sh를 먼저 실행하세요." >&2
@@ -185,8 +186,17 @@ printf 'Command: '
 printf '%q ' "${CMD[@]}"
 echo
 
-# Preserve the normal RSL-RL log while adding a compact percentage progress bar.
-# pipefail is enabled at the top of this script, so train failures still propagate.
-"${CMD[@]}" 2>&1 | python3 "$REPO_DIR/scripts/progress_filter.py"
+# Stream logs to Colab immediately and save the same output to Google Drive.
+# PYTHONUNBUFFERED=1 prevents Python/RSL-RL stdout from being block-buffered by the pipe.
+TRAIN_LOG_DIR="$DRIVE_ROOT"
+TRAIN_LOG="$TRAIN_LOG_DIR/training.log"
+mkdir -p "$TRAIN_LOG_DIR"
+
+echo "Live log file       : $TRAIN_LOG"
+echo "If the Colab output is collapsed, open this file in Google Drive."
+
+"${CMD[@]}" 2>&1 \
+  | python3 -u "$REPO_DIR/scripts/progress_filter.py" \
+  | tee -a "$TRAIN_LOG"
 
 echo "Training command finished."
