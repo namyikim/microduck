@@ -2,11 +2,6 @@ name: Import upstream microduck_rl
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/import-upstream.yml"
 
 permissions:
   contents: write
@@ -17,7 +12,6 @@ concurrency:
 
 jobs:
   import:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     steps:
@@ -26,32 +20,39 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Preserve local Colab integration
+      - name: Preserve local extensions
         shell: bash
         run: |
           set -euo pipefail
+
+          rm -rf /tmp/microduck-local
           mkdir -p /tmp/microduck-local/scripts
           mkdir -p /tmp/microduck-local/.github/workflows
           mkdir -p /tmp/microduck-local/src/mjlab_microduck/tasks
           mkdir -p /tmp/microduck-local/tests
 
           cp COLAB.md /tmp/microduck-local/COLAB.md
+          cp JUMP_SPIN.md /tmp/microduck-local/JUMP_SPIN.md
           cp MicroDuck_Colab_A100.ipynb /tmp/microduck-local/MicroDuck_Colab_A100.ipynb
+
           cp scripts/setup_colab.sh /tmp/microduck-local/scripts/setup_colab.sh
           cp scripts/train_colab.sh /tmp/microduck-local/scripts/train_colab.sh
           cp scripts/progress_filter.py /tmp/microduck-local/scripts/progress_filter.py
+
           cp .github/workflows/import-upstream.yml /tmp/microduck-local/.github/workflows/import-upstream.yml
           cp .github/workflows/jump-spin-tests.yml /tmp/microduck-local/.github/workflows/jump-spin-tests.yml
-          cp JUMP_SPIN.md /tmp/microduck-local/JUMP_SPIN.md
+
           cp src/mjlab_microduck/jump_spin_plugin.py /tmp/microduck-local/src/mjlab_microduck/jump_spin_plugin.py
           cp src/mjlab_microduck/tasks/jump_spin_mdp.py /tmp/microduck-local/src/mjlab_microduck/tasks/jump_spin_mdp.py
           cp src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py /tmp/microduck-local/src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py
+
           cp tests/test_jump_spin_cfg.py /tmp/microduck-local/tests/test_jump_spin_cfg.py
 
       - name: Clone official upstream
         shell: bash
         run: |
           set -euo pipefail
+
           rm -rf /tmp/microduck-upstream
           git clone \
             --depth 1 \
@@ -61,7 +62,7 @@ jobs:
 
           git -C /tmp/microduck-upstream rev-parse HEAD | tee /tmp/upstream-sha
 
-      - name: Replace source tree with upstream snapshot
+      - name: Replace upstream snapshot
         shell: bash
         run: |
           set -euo pipefail
@@ -70,28 +71,41 @@ jobs:
             --exclude='.git/' \
             /tmp/microduck-upstream/ ./
 
-          mkdir -p scripts .github/workflows src/mjlab_microduck/tasks tests
+          mkdir -p scripts
+          mkdir -p .github/workflows
+          mkdir -p src/mjlab_microduck/tasks
+          mkdir -p tests
 
           cp /tmp/microduck-local/COLAB.md COLAB.md
+          cp /tmp/microduck-local/JUMP_SPIN.md JUMP_SPIN.md
           cp /tmp/microduck-local/MicroDuck_Colab_A100.ipynb MicroDuck_Colab_A100.ipynb
+
           cp /tmp/microduck-local/scripts/setup_colab.sh scripts/setup_colab.sh
           cp /tmp/microduck-local/scripts/train_colab.sh scripts/train_colab.sh
           cp /tmp/microduck-local/scripts/progress_filter.py scripts/progress_filter.py
+
           cp /tmp/microduck-local/.github/workflows/import-upstream.yml .github/workflows/import-upstream.yml
           cp /tmp/microduck-local/.github/workflows/jump-spin-tests.yml .github/workflows/jump-spin-tests.yml
-          cp /tmp/microduck-local/JUMP_SPIN.md JUMP_SPIN.md
+
           cp /tmp/microduck-local/src/mjlab_microduck/jump_spin_plugin.py src/mjlab_microduck/jump_spin_plugin.py
           cp /tmp/microduck-local/src/mjlab_microduck/tasks/jump_spin_mdp.py src/mjlab_microduck/tasks/jump_spin_mdp.py
           cp /tmp/microduck-local/src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py
+
           cp /tmp/microduck-local/tests/test_jump_spin_cfg.py tests/test_jump_spin_cfg.py
 
-      - name: Add local integration metadata
+      - name: Restore local integration metadata
         shell: bash
         run: |
           set -euo pipefail
 
           UPSTREAM_SHA="$(cat /tmp/upstream-sha)"
           IMPORTED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          if ! grep -q '^mjlab_microduck_jump_spin = ' pyproject.toml; then
+            sed -i '/^mjlab_microduck = "mjlab_microduck.tasks"$/a mjlab_microduck_jump_spin = "mjlab_microduck.jump_spin_plugin"' pyproject.toml
+          fi
+
+          grep -q '^mjlab_microduck_jump_spin = "mjlab_microduck.jump_spin_plugin"$' pyproject.toml
 
           {
             echo "# Upstream source"
@@ -106,62 +120,31 @@ jobs:
             echo "## Updating"
             echo
             echo "Run the **Import upstream microduck_rl** workflow from the Actions tab."
-            echo "It replaces the upstream source snapshot while preserving the Colab-specific files"
-            echo "documented in [COLAB.md](COLAB.md)."
+            echo "Local Colab and JumpSpin extensions are preserved automatically."
           } > UPSTREAM.md
 
-          cat > /tmp/colab-banner.md <<'EOF'
+          cat > /tmp/local-banner.md <<'EOF'
           [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/namyikim/microduck/blob/main/MicroDuck_Colab_A100.ipynb)
 
           > [!NOTE]
-          > This repository tracks the official `pollen-robotics/microduck_rl` source and adds
-          > a Google Colab A100 training workflow with Drive checkpoint/resume support.
-          > See **[COLAB.md](COLAB.md)** or open
-          > **[MicroDuck_Colab_A100.ipynb](MicroDuck_Colab_A100.ipynb)**.
+          > This repository tracks `pollen-robotics/microduck_rl` and adds:
+          > - Google Colab A100 training with Drive checkpoint/resume support
+          > - Experimental **JumpSpin 360** training: [JUMP_SPIN.md](JUMP_SPIN.md)
 
           EOF
 
-          cat /tmp/colab-banner.md README.md > README.md.tmp
+          cat /tmp/local-banner.md README.md > README.md.tmp
           mv README.md.tmp README.md
 
-          if ! grep -q '^mjlab_microduck_jump_spin = ' pyproject.toml; then
-            sed -i '/^mjlab_microduck = "mjlab_microduck.tasks"$/a mjlab_microduck_jump_spin = "mjlab_microduck.jump_spin_plugin"' pyproject.toml
-          fi
-          grep -q '^mjlab_microduck_jump_spin = "mjlab_microduck.jump_spin_plugin"
-          cat >> .gitignore <<'EOF'
-
-          # namyikim/microduck local integration
-          .ipynb_checkpoints/
-          EOF
-
-      - name: Commit upstream snapshot
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          UPSTREAM_SHA="$(cat /tmp/upstream-sha)"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add -A
-
-          if git diff --cached --quiet; then
-            echo "Already synchronized with upstream."
-            exit 0
+          if ! grep -q '^\.ipynb_checkpoints/$' .gitignore; then
+            {
+              echo
+              echo "# namyikim/microduck local integration"
+              echo ".ipynb_checkpoints/"
+            } >> .gitignore
           fi
 
-          git commit -m "Import microduck_rl develop @ ${UPSTREAM_SHA:0:12}"
-          git push origin HEAD:main
- pyproject.toml
-
-          cat >> .gitignore <<'EOF'
-
-          # namyikim/microduck local integration
-          .ipynb_checkpoints/
-          EOF
-
-      - name: Commit upstream snapshot
+      - name: Commit synchronized snapshot
         shell: bash
         run: |
           set -euo pipefail
