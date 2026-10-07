@@ -77,22 +77,22 @@ jobs:
           UPSTREAM_SHA="$(cat /tmp/upstream-sha)"
           IMPORTED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
-          cat > UPSTREAM.md <<EOF
-          # Upstream source
-
-          This repository contains a snapshot of the official MicroDuck RL repository.
-
-          - Repository: https://github.com/pollen-robotics/microduck_rl
-          - Branch: `develop`
-          - Commit: `${UPSTREAM_SHA}`
-          - Imported at: `${IMPORTED_AT}`
-
-          ## Updating
-
-          Run the **Import upstream microduck_rl** workflow from the Actions tab.
-          It replaces the upstream source snapshot while preserving the Colab-specific files
-          documented in [COLAB.md](COLAB.md).
-          EOF
+          {
+            echo "# Upstream source"
+            echo
+            echo "This repository contains a snapshot of the official MicroDuck RL repository."
+            echo
+            echo "- Repository: https://github.com/pollen-robotics/microduck_rl"
+            echo "- Branch: develop"
+            echo "- Commit: ${UPSTREAM_SHA}"
+            echo "- Imported at: ${IMPORTED_AT}"
+            echo
+            echo "## Updating"
+            echo
+            echo "Run the **Import upstream microduck_rl** workflow from the Actions tab."
+            echo "It replaces the upstream source snapshot while preserving the Colab-specific files"
+            echo "documented in [COLAB.md](COLAB.md)."
+          } > UPSTREAM.md
 
           cat > /tmp/colab-banner.md <<'EOF'
           > [!NOTE]
