@@ -72,3 +72,36 @@ This is an experimental dynamic maneuver. Validate it in simulation and inspect
 landing impact, joint limits, torque/velocity margins, and repeated-failure
 behavior before considering a real-robot deployment. A policy that looks good
 in a few simulation rollouts is not sufficient evidence for safe hardware use.
+
+
+## Automatic rollout videos
+
+The JumpSpin Colab notebook automatically renders evaluation videos after
+training reaches the target iteration count.
+
+It selects the latest local checkpoint and runs five independent play-mode
+episodes from the normal standing start. The headless renderer writes:
+
+```text
+MyDrive/microduck-jump-spin-training/
+└── videos/
+    ├── jump_spin_trial_01.mp4
+    ├── jump_spin_trial_02.mp4
+    ├── jump_spin_trial_03.mp4
+    ├── jump_spin_trial_04.mp4
+    ├── jump_spin_trial_05.mp4
+    └── evaluation_summary.json
+```
+
+The summary records the checkpoint, per-episode reward, episode length, and
+the observed maximum airborne spin-progress accumulator. The notebook also
+embeds the generated MP4 files directly below the training cell.
+
+You can rerender manually from any local checkpoint:
+
+```bash
+uv run python scripts/render_jump_spin.py \
+  --checkpoint logs/rsl_rl/jump_spin/<run>/model_9900.pt \
+  --output-dir /tmp/jump-spin-videos \
+  --trials 5
+```
