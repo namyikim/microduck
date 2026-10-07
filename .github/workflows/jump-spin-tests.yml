@@ -1,0 +1,44 @@
+name: JumpSpin config tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/mjlab_microduck/jump_spin_plugin.py"
+      - "src/mjlab_microduck/tasks/jump_spin_mdp.py"
+      - "src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py"
+      - "tests/test_jump_spin_cfg.py"
+      - "pyproject.toml"
+      - ".github/workflows/jump-spin-tests.yml"
+  pull_request:
+    paths:
+      - "src/mjlab_microduck/jump_spin_plugin.py"
+      - "src/mjlab_microduck/tasks/jump_spin_mdp.py"
+      - "src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py"
+      - "tests/test_jump_spin_cfg.py"
+      - "pyproject.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  config-tests:
+    runs-on: ubuntu-latest
+    env:
+      UV_HTTP_TIMEOUT: "600"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: uv sync --frozen
+
+      - name: Verify task registry
+        run: uv run list-envs | grep "Mjlab-JumpSpin-Flat-MicroDuck"
+
+      - name: Run JumpSpin config tests
+        run: uv run --with pytest pytest -q tests/test_jump_spin_cfg.py
