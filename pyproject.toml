@@ -39,6 +39,7 @@ dependencies = [
 
 [project.entry-points."mjlab.tasks"]
 mjlab_microduck = "mjlab_microduck.tasks"
+mjlab_microduck_jump_spin = "mjlab_microduck.jump_spin_plugin"
 
 [project.scripts]
 # This name collides with mjlab's `train` ON PURPOSE and must stay declared.
