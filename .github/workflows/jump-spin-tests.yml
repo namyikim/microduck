@@ -8,9 +8,10 @@ on:
       - "src/mjlab_microduck/tasks/jump_spin_mdp.py"
       - "src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py"
       - "scripts/render_jump_spin.py"
+      - "scripts/prepare_jump_spin_release.py"
+      - "scripts/publish_jump_spin_hf.py"
       - "MicroDuck_JumpSpin_A100.ipynb"
-      - "scripts/render_jump_spin.py"
-      - "MicroDuck_JumpSpin_A100.ipynb"
+      - "JUMP_SPIN_HF_RELEASE.md"
       - "tests/test_jump_spin_cfg.py"
       - "pyproject.toml"
       - ".github/workflows/jump-spin-tests.yml"
@@ -19,6 +20,11 @@ on:
       - "src/mjlab_microduck/jump_spin_plugin.py"
       - "src/mjlab_microduck/tasks/jump_spin_mdp.py"
       - "src/mjlab_microduck/tasks/microduck_jump_spin_env_cfg.py"
+      - "scripts/render_jump_spin.py"
+      - "scripts/prepare_jump_spin_release.py"
+      - "scripts/publish_jump_spin_hf.py"
+      - "MicroDuck_JumpSpin_A100.ipynb"
+      - "JUMP_SPIN_HF_RELEASE.md"
       - "tests/test_jump_spin_cfg.py"
       - "pyproject.toml"
 
@@ -44,8 +50,11 @@ jobs:
       - name: Verify task registry
         run: uv run list-envs | grep "Mjlab-JumpSpin-Flat-MicroDuck"
 
-      - name: Compile JumpSpin renderer
-        run: uv run python -m py_compile scripts/render_jump_spin.py
+      - name: Compile JumpSpin tooling
+        run: |
+          uv run python -m py_compile scripts/render_jump_spin.py
+          uv run python -m py_compile scripts/prepare_jump_spin_release.py
+          uv run python -m py_compile scripts/publish_jump_spin_hf.py
 
       - name: Run JumpSpin config tests
         run: uv run --with pytest pytest -q tests/test_jump_spin_cfg.py
