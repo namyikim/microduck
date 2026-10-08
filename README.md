@@ -26,6 +26,15 @@ Google Colab A100 학습, Google Drive checkpoint 복구, **JumpSpin 360** 실�
 
 ---
 
+## 이전 학습 checkpoint 정리
+
+[Colab에서 정리 노트북 열기](https://colab.research.google.com/github/namyikim/microduck/blob/main/MicroDuck_Cleanup_Old_Checkpoints.ipynb)
+
+기존 `jump_spin` 실험의 최종 checkpoint 하나를 보존하고 중간 `.pt`만 정리합니다.
+기본값은 삭제 없는 미리보기이며, GPU는 필요하지 않습니다.
+
+---
+
 ## 이 저장소에서 추가한 기능
 
 ### 1. Google Colab A100 학습 환경
