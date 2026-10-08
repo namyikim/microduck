@@ -29,36 +29,40 @@ fi
 
 cd "$REPO_DIR"
 
-# Resolve the experiment_name from the selected task itself.
-# This prevents a stale Colab variable (e.g. "velocity") from making a JumpSpin
-# run search the wrong checkpoint directory.
-CONFIG_EXPERIMENT_NAME="$(uv run python - "$TASK_ID" <<'PY'
+# Prefer the explicit experiment name supplied by the Colab notebook.
+# Importing task plugins can print warnings/patch banners to stdout; capturing that
+# output in command substitution previously corrupted EXPERIMENT_NAME and caused
+# checkpoint resume to search a bogus directory.
+if [[ -n "$EXPERIMENT_NAME" ]]; then
+  CONFIG_EXPERIMENT_NAME="$EXPERIMENT_NAME"
+else
+  CONFIG_EXPERIMENT_NAME="$(uv run python - "$TASK_ID" <<'PY'
+import contextlib
 import sys
 from importlib.metadata import entry_points
 
 task_id = sys.argv[1]
-for ep in entry_points(group="mjlab.tasks"):
-    try:
-        ep.load()
-    except Exception:
-        pass
+# Keep plugin banners/warnings out of stdout because stdout is captured by bash.
+with contextlib.redirect_stdout(sys.stderr):
+    for ep in entry_points(group="mjlab.tasks"):
+        try:
+            ep.load()
+        except Exception:
+            pass
+    from mjlab.tasks.registry import load_rl_cfg
+    cfg = load_rl_cfg(task_id)
 
-from mjlab.tasks.registry import load_rl_cfg
-cfg = load_rl_cfg(task_id)
 print(cfg.experiment_name)
 PY
 )"
+fi
 
-if [[ -z "$CONFIG_EXPERIMENT_NAME" ]]; then
-  echo "ERROR: Could not resolve experiment_name for task: $TASK_ID" >&2
+if [[ -z "$CONFIG_EXPERIMENT_NAME" || "$CONFIG_EXPERIMENT_NAME" == *$'\n'* ]]; then
+  echo "ERROR: Invalid experiment_name resolved for task: $TASK_ID" >&2
+  printf 'Resolved value: %q\n' "$CONFIG_EXPERIMENT_NAME" >&2
   exit 1
 fi
 
-if [[ -n "$EXPERIMENT_NAME" && "$EXPERIMENT_NAME" != "$CONFIG_EXPERIMENT_NAME" ]]; then
-  echo "WARNING: Colab EXPERIMENT_NAME='$EXPERIMENT_NAME' does not match task config."
-  echo "         Task '$TASK_ID' uses '$CONFIG_EXPERIMENT_NAME'."
-  echo "         Using task config value so checkpoint resume cannot search the wrong folder."
-fi
 EXPERIMENT_NAME="$CONFIG_EXPERIMENT_NAME"
 
 LOCAL_LOGS="$REPO_DIR/logs"
