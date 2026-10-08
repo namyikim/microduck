@@ -224,10 +224,12 @@ PY
     DONE=$((10#$N))
   fi
 
-  # mjlab treats load_run/load_checkpoint as regex patterns.
-  # Anchor and escape the exact names so the restored file is unambiguous.
-  LOAD_RUN="^$(printf '%s' "$RUN_DIR" | sed 's/[][\\.^$*+?{}|()]/\\\\&/g')$"
-  LOAD_CHECKPOINT="^$(printf '%s' "$FILE" | sed 's/[][\\.^$*+?{}|()]/\\\\&/g')$"
+  # mjlab treats load_run/load_checkpoint as regular expressions.
+  # Our generated run/checkpoint names only use safe characters, so anchor the
+  # literal names directly. Avoid shell double-escaping which previously made
+  # Python regex look for a backslash that is not present in the filename.
+  LOAD_RUN="^${RUN_DIR}$"
+  LOAD_CHECKPOINT="^model_${N}[.]pt$"
 
   echo
   echo "============================================================"
