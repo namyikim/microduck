@@ -2,7 +2,7 @@
 set -euo pipefail
 
 TASK_ID="${TASK_ID:-Mjlab-Velocity-Flat-MicroDuck}"
-EXPERIMENT_NAME="${EXPERIMENT_NAME:-velocity}"
+EXPERIMENT_NAME="${EXPERIMENT_NAME:-}"
 NUM_ENVS="${NUM_ENVS:-4096}"
 TARGET_ITERS="${TARGET_ITERS:-6000}"
 SYNC_INTERVAL="${SYNC_INTERVAL:-60}"
@@ -28,14 +28,62 @@ fi
 
 cd "$REPO_DIR"
 
+# Resolve the experiment_name from the selected task itself.
+# This prevents a stale Colab variable (e.g. "velocity") from making a JumpSpin
+# run search the wrong checkpoint directory.
+CONFIG_EXPERIMENT_NAME="$(uv run python - "$TASK_ID" <<'PY'
+import sys
+from importlib.metadata import entry_points
+
+task_id = sys.argv[1]
+for ep in entry_points(group="mjlab.tasks"):
+    try:
+        ep.load()
+    except Exception:
+        pass
+
+from mjlab.tasks.registry import load_rl_cfg
+cfg = load_rl_cfg(task_id)
+print(cfg.experiment_name)
+PY
+)"
+
+if [[ -z "$CONFIG_EXPERIMENT_NAME" ]]; then
+  echo "ERROR: Could not resolve experiment_name for task: $TASK_ID" >&2
+  exit 1
+fi
+
+if [[ -n "$EXPERIMENT_NAME" && "$EXPERIMENT_NAME" != "$CONFIG_EXPERIMENT_NAME" ]]; then
+  echo "WARNING: Colab EXPERIMENT_NAME='$EXPERIMENT_NAME' does not match task config."
+  echo "         Task '$TASK_ID' uses '$CONFIG_EXPERIMENT_NAME'."
+  echo "         Using task config value so checkpoint resume cannot search the wrong folder."
+fi
+EXPERIMENT_NAME="$CONFIG_EXPERIMENT_NAME"
+
 LOCAL_LOGS="$REPO_DIR/logs"
 EXPERIMENT_DIR="$LOCAL_LOGS/rsl_rl/$EXPERIMENT_NAME"
 BACKUP_LOGS="$DRIVE_ROOT/logs"
 mkdir -p "$LOCAL_LOGS" "$EXPERIMENT_DIR" "$BACKUP_LOGS"
 
+TASK_KEY="$(printf '%s' "$TASK_ID" | tr -cs 'A-Za-z0-9._-' '_')"
+LATEST_MANIFEST="$DRIVE_ROOT/latest_checkpoint_${TASK_KEY}.txt"
+
+echo "Task config experiment: $EXPERIMENT_NAME"
+echo "Checkpoint search dir: $BACKUP_LOGS/rsl_rl/$EXPERIMENT_NAME"
+
 echo "== Restore previous logs from Drive =="
 if [[ -d "$BACKUP_LOGS/rsl_rl" ]]; then
   rsync -a --exclude='*.partial' "$BACKUP_LOGS/" "$LOCAL_LOGS/"
+fi
+
+echo "== Drive checkpoint candidates for $EXPERIMENT_NAME =="
+find "$BACKUP_LOGS/rsl_rl/$EXPERIMENT_NAME" -type f -name 'model_*.pt' -printf '%T@ %p\n' 2>/dev/null \
+  | sort -nr \
+  | head -n 10 \
+  | cut -d' ' -f2- || true
+
+if [[ -f "$LATEST_MANIFEST" ]]; then
+  echo "Task checkpoint manifest: $(cat "$LATEST_MANIFEST")"
 fi
 
 find_latest_checkpoint() {
@@ -97,6 +145,14 @@ sync_once() {
   while IFS= read -r -d '' src; do
     sync_checkpoint "$src"
   done < <(find "$LOCAL_LOGS" -type f -name 'model_*.pt' -print0 2>/dev/null)
+
+  local latest rel
+  latest="$(find_latest_checkpoint || true)"
+  if [[ -n "$latest" && -f "$latest" ]]; then
+    rel="${latest#"$LOCAL_LOGS/"}"
+    printf '%s\n' "$rel" > "$LATEST_MANIFEST.tmp"
+    mv -f "$LATEST_MANIFEST.tmp" "$LATEST_MANIFEST"
+  fi
 }
 
 sync_loop() {
@@ -106,7 +162,18 @@ sync_loop() {
   done
 }
 
-LATEST="$(find_latest_checkpoint || true)"
+LATEST=""
+if [[ -f "$LATEST_MANIFEST" ]]; then
+  MANIFEST_REL="$(cat "$LATEST_MANIFEST" 2>/dev/null || true)"
+  MANIFEST_LOCAL="$LOCAL_LOGS/$MANIFEST_REL"
+  if [[ -n "$MANIFEST_REL" && -f "$MANIFEST_LOCAL" ]]; then
+    LATEST="$MANIFEST_LOCAL"
+    echo "Using task-specific checkpoint manifest."
+  fi
+fi
+if [[ -z "$LATEST" ]]; then
+  LATEST="$(find_latest_checkpoint || true)"
+fi
 
 if [[ -z "$LATEST" && "$SMOKE_TEST" == "1" ]]; then
   echo "== Smoke test: 64 envs / 5 iterations =="
@@ -120,7 +187,9 @@ if [[ -z "$LATEST" && "$SMOKE_TEST" == "1" ]]; then
   echo "Smoke test passed."
 fi
 
-LATEST="$(find_latest_checkpoint || true)"
+if [[ -z "$LATEST" ]]; then
+  LATEST="$(find_latest_checkpoint || true)"
+fi
 DONE=0
 LOAD_RUN=""
 LOAD_CHECKPOINT=""
@@ -141,7 +210,7 @@ print(int(d.get("iter", -1)))
 PY
 )"
   if [[ "$CKPT_ITER" =~ ^[0-9]+$ ]]; then
-    DONE="$CKPT_ITER"
+    DONE="$CKPT_ITER"  # RSL-RL stores the exact current_learning_iteration
   else
     DONE=$((10#$N))
   fi
