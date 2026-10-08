@@ -32,6 +32,7 @@ def _state(env: ManagerBasedRlEnv) -> tuple[torch.Tensor, torch.Tensor, torch.Te
         env._jump_spin_accum = z.clone()
         env._jump_spin_max = z.clone()
         env._jump_spin_paid = z.clone()
+        env._jump_spin_launch_paid = z.clone()
         env._jump_spin_airborne_latch = torch.zeros(
             env.num_envs, dtype=torch.bool, device=env.device
         )
@@ -155,8 +156,14 @@ def reset_jump_spin_state(
     landing_vz_range: tuple[float, float] = (-0.8, -0.05),
     crouch_overrides: dict[int, float] | None = None,
     joint_noise_std: float = 0.03,
+    **target_kwargs,
 ) -> None:
-    """Reset into standing, mid-air spin, or near-landing reverse-curriculum states."""
+    """Reset into standing, mid-air spin, or near-landing states.
+
+    Progress ranges describe the final-angle stage and scale with the current
+    target. Otherwise 300..355 degree landing spawns start *past* the early
+    180/270 degree goals and never practice the remaining part of the turn.
+    """
     if env_ids is None or len(env_ids) == 0:
         return
 
@@ -178,8 +185,11 @@ def reset_jump_spin_state(
     # starting heading. This makes reverse-curriculum states geometrically
     # consistent with the accumulated rotation used by the reward.
     progress = torch.zeros(num, device=env.device)
-    air_progress = uniform(*airborne_progress_range)
-    land_progress = uniform(*landing_progress_range)
+    target = curriculum_target_angle(env, **target_kwargs)
+    final_angle = target_kwargs.get("final_angle", 2.0 * math.pi)
+    progress_scale = target / final_angle
+    air_progress = uniform(*airborne_progress_range) * progress_scale
+    land_progress = uniform(*landing_progress_range) * progress_scale
     progress = torch.where(is_air, air_progress, progress)
     progress = torch.where(is_land, land_progress, progress)
 
@@ -238,6 +248,7 @@ def reset_jump_spin_state(
     env._jump_spin_accum[env_ids] = progress
     env._jump_spin_max[env_ids] = progress
     env._jump_spin_paid[env_ids] = progress
+    env._jump_spin_launch_paid[env_ids] = 0.0
     env._jump_spin_start_yaw[env_ids] = start_yaw
     env._jump_spin_airborne_latch[env_ids] = is_air | is_land
     env._jump_spin_last_update_step = -1
@@ -250,7 +261,14 @@ def jump_spin_launch_reward(
     target_yaw_rate: float = 8.0,
     asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
 ) -> torch.Tensor:
-    """Bootstrap a take-off that simultaneously injects upward and yaw momentum."""
+    """Pay new launch momentum, including upward pushes before yaw is learned.
+
+    The old product gave a pure vertical push zero signal. Half of the score
+    now comes from upward speed alone; the other half encourages simultaneous
+    yaw. Pay only increases beyond the episode's best score, so repeated
+    grounded bobbing cannot farm a per-step launch reward. RewardManager
+    multiplies by step_dt: total unweighted launch payout is at most one.
+    """
     asset: Entity = env.scene[asset_cfg.name]
     _state(env)
     contact = _any_foot_contact(env, sensor_name)
@@ -259,7 +277,11 @@ def jump_spin_launch_reward(
     wz = torch.clamp(asset.data.root_link_ang_vel_w[:, 2], min=0.0)
     vertical = torch.clamp(vz / target_vz, 0.0, 1.0)
     yaw = torch.clamp(wz / target_yaw_rate, 0.0, 1.0)
-    return vertical * yaw * contact.float() * not_taken_off.float()
+    score = vertical * (0.5 + 0.5 * yaw) * contact.float() * not_taken_off.float()
+    paid = env._jump_spin_launch_paid
+    delta = torch.clamp(score - paid, min=0.0)
+    env._jump_spin_launch_paid = torch.maximum(paid, score)
+    return delta / env.step_dt
 
 
 def jump_spin_airborne_height(

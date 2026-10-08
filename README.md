@@ -71,7 +71,7 @@ MyDrive/microduck-training/
 JumpSpin checkpoint:
 
 ```text
-MyDrive/microduck-training/logs/rsl_rl/jump_spin/
+MyDrive/microduck-training/logs/rsl_rl/jump_spin_launch_v2/
 ```
 
 주요 동작:
@@ -87,7 +87,7 @@ MyDrive/microduck-training/logs/rsl_rl/jump_spin/
 수동 복구 파일은 다음처럼 둘 수 있습니다.
 
 ```text
-MyDrive/microduck-training/logs/rsl_rl/jump_spin/manual_recovery/model_XXXX.pt
+MyDrive/microduck-training/logs/rsl_rl/jump_spin_launch_v2/manual_recovery/model_XXXX.pt
 ```
 
 다음 Colab 실행에서는 가장 높은 숫자의 checkpoint부터 이어서 학습합니다.
@@ -129,11 +129,11 @@ stand
 또한 reverse curriculum을 사용해서 초기에는 공중/착지 상태를 많이 경험시키고,
 후반으로 갈수록 실제 **standing start** 비율을 높입니다.
 
-기본 목표 학습량:
-
-```text
-10,000 PPO iterations
-```
+현재 노트북은 `jump_spin_launch_v2` 실험에서 한 번 실행하면 **10,000회 학습과
+마지막 영상 평가까지 자동 진행**합니다. 짧은 진단만 원하면 선택적으로
+`TARGET_ITERS = 500`으로 설정할 수 있습니다.
+기존 `jump_spin` 실험의 checkpoint는 보존되며 새 실험에서 자동으로 이어받지 않습니다.
+실패 분석과 수정 범위는 [JUMP_SPIN.md](JUMP_SPIN.md)를 참고하세요.
 
 상세 설명: [JUMP_SPIN.md](JUMP_SPIN.md)
 

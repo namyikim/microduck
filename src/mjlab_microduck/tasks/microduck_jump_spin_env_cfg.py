@@ -191,6 +191,7 @@ def make_microduck_jump_spin_env_cfg(play: bool = False):
             "landing_vz_range": (-0.8, -0.05),
             "crouch_overrides": CROUCH_OVERRIDES,
             "joint_noise_std": 0.03 if not play else 0.0,
+            **TARGET_KWARGS,
         },
     )
 
@@ -310,7 +311,8 @@ MicroduckJumpSpinRlCfg = RslRlOnPolicyRunnerCfg(
         symmetry_cfg=None,
     ),
     wandb_project="mjlab_microduck",
-    experiment_name="jump_spin",
+    # Keep v1 checkpoints out of automatic Colab resume after changing rewards.
+    experiment_name="jump_spin_launch_v2",
     run_name="jump_spin",
     save_interval=100,
     num_steps_per_env=24,

@@ -103,7 +103,7 @@ You can rerender manually from any local checkpoint:
 
 ```bash
 uv run python scripts/render_jump_spin.py \
-  --checkpoint logs/rsl_rl/jump_spin/<run>/model_9900.pt \
+  --checkpoint logs/rsl_rl/jump_spin_launch_v2/<run>/model_9900.pt \
   --output-dir /tmp/jump-spin-videos \
   --trials 5
 ```
@@ -134,3 +134,38 @@ uv run python scripts/render_jump_spin.py \
 진단은 자동 reset 직전의 최종 물리 프레임을 놓칠 수 있습니다. 기존 회전 누적값은
 양의 world-Z 각속도를 적분하므로 순회전 360° 또는 안정적 착지의 증명이 아닙니다.
 영상과 진단·학습 로그를 함께 확인한 뒤 재학습 방향을 결정해야 합니다.
+
+## 2026-10-08 실패 분석과 launch v2
+
+제공된 `model_9999.pt` 평가 요약에서는 5회 모두 225스텝(4.5초)을 실행했지만
+관측 회전량은 모두 0°였습니다. 제공된 로그의 마지막 100 iteration 평균은
+`jump_launch=0.00076`, `jump_spin_progress=0.06979`,
+`action_rate_l2=-0.94698`이었습니다. 이는 목표 동작을 획득했다는 증거가 아닙니다.
+로그에는 초기 0–12회와 마지막 9100–9999회가 있으므로 전체 학습 경과를 복원할 수는 없습니다.
+
+코드 및 CPU 텐서 테스트에서 확인한 두 문제를 수정했습니다.
+
+- 이륙 보상의 `vertical * yaw`는 회전 없는 상승에 항상 0을 반환했습니다.
+  v2는 상승 자체에도 신호를 주고 회전이 동반되면 추가 점수를 줍니다.
+  한 에피소드에서 이전 최고 점수를 넘은 증가분만 지급하므로 같은 동작을 반복해서
+  보상을 계속 받지 못합니다. `step_dt` 적분 후 최대 지급량은 reward weight 이하입니다.
+- 착지 보조 시작의 300–355° 범위는 초기 180°/270° 목표를 이미 넘었습니다.
+  v2는 시작 진행량을 현재 목표에 비례시킵니다. 180° 단계의 착지 시작은
+  150–177.5°, 270° 단계는 225–266.25°, 360° 단계는 기존과 동일합니다.
+
+새 실험 이름은 `jump_spin_launch_v2`입니다. checkpoint는
+`MyDrive/microduck-training/logs/rsl_rl/jump_spin_launch_v2/`에 저장됩니다.
+기존 `jump_spin`의 9999번 checkpoint를 새 실험에 복사하거나 자동 resume하지 마세요.
+보상 변경만으로 기존 모델의 가중치가 개선되지는 않습니다.
+
+노트북 기본값은 **10,000회 전체 학습과 마지막 영상 평가 자동 실행**입니다.
+새 실험은 기존 스크립트의 64환경/5회 smoke test를 먼저 거칩니다. 회전 목표와
+시작 조건의 커리큘럼도 자동으로 진행되어 단계마다 셀을 수동 실행할 필요가 없습니다.
+짧은 진단만 원하면 선택적으로 `TARGET_ITERS = 500`을 사용할 수 있습니다.
+이륙이 계속 0이면 같은 설정의 장기 학습을 반복하지 말고 진단 결과를 확인하세요.
+학습 횟수는 성공을 보장하지 않으며, 360° 성공은 실제 재학습·영상 검증 전까지 미확인입니다.
+
+로컬 Mac에서는 mjlab/CUDA를 실행하지 못해 임시 PyTorch 2.2.2 환경에서
+시뮬레이터 import만 대체한 순수 텐서 테스트를 실행했습니다. Colab의 고정 버전
+PyTorch 2.9.1은 변경하지 않았습니다. 전체 config 테스트는 Linux CI,
+물리 smoke test와 재학습은 Colab에서 별도로 확인해야 합니다.

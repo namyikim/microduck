@@ -13,7 +13,7 @@ the later stages. Do not publish an intermediate checkpoint just because it can 
 Keep the final checkpoint in Google Drive under:
 
 ```text
-MyDrive/microduck-training/logs/rsl_rl/jump_spin/
+MyDrive/microduck-training/logs/rsl_rl/jump_spin_launch_v2/
 ```
 
 ## 2. Render evaluation rollouts
@@ -41,7 +41,7 @@ Example from Colab:
 cd /content/microduck
 
 uv run python scripts/prepare_jump_spin_release.py \
-  --checkpoint /content/drive/MyDrive/microduck-training/logs/rsl_rl/jump_spin/manual_recovery/model_10000.pt \
+  --checkpoint /content/drive/MyDrive/microduck-training/logs/rsl_rl/jump_spin_launch_v2/manual_recovery/model_10000.pt \
   --evaluation-summary /content/drive/MyDrive/microduck-training/videos/evaluation_summary.json \
   --video /content/drive/MyDrive/microduck-training/videos/jump_spin_trial_01.mp4 \
   --repo YOUR_HF_USERNAME/microduck-jump-spin \
