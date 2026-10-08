@@ -14,9 +14,12 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+from jump_spin_diagnostics import sample_rollout, summarize_rollout
 
 # Must be set before MuJoCo/mjlab creates a renderer.
 os.environ.setdefault("MUJOCO_GL", "egl")
@@ -118,6 +121,8 @@ def main() -> None:
     current_steps = 0
     max_progress_deg: list[float] = []
     current_max_progress = 0.0
+    current_samples: list[dict] = []
+    diagnostics: list[dict] = []
 
     # Guard against a broken termination/timeout configuration.
     max_total_steps = int(args.trials * env.unwrapped.max_episode_length * 1.25) + 100
@@ -125,6 +130,7 @@ def main() -> None:
 
     try:
         while recorder.video_count < args.trials and total_steps < max_total_steps:
+            current_samples.append(sample_rollout(env.unwrapped))
             # Capture progress before stepping because the environment may auto-reset
             # immediately on timeout, which resets the task accumulator.
             progress = getattr(env.unwrapped, "_jump_spin_max", None)
@@ -147,15 +153,23 @@ def main() -> None:
                 episode_steps.append(current_steps)
                 max_progress_deg.append(current_max_progress * 180.0 / 3.141592653589793)
                 idx = len(episode_rewards)
+                diagnostic = summarize_rollout(current_samples, env.unwrapped.step_dt)
+                diagnostic["trial"] = idx
+                trace_path = output_dir / f"jump_spin_trial_{idx:02d}_trace.json"
+                trace_path.write_text(json.dumps(current_samples, indent=2), encoding="utf-8")
+                diagnostic["trace"] = str(trace_path)
+                diagnostics.append(diagnostic)
                 print(
                     f"[JumpSpin video] trial {idx}/{args.trials}: "
                     f"reward={reward_sum:.3f}, "
                     f"observed_progress≈{max_progress_deg[-1]:.1f}°, "
                     f"steps={current_steps}"
                 )
+                print(f"[JumpSpin diagnosis] {diagnostic}")
                 reward_sum = 0.0
                 current_steps = 0
                 current_max_progress = 0.0
+                current_samples = []
 
         if recorder.video_count < args.trials:
             raise RuntimeError(
@@ -176,6 +190,7 @@ def main() -> None:
         videos.append(str(dest))
 
     summary = {
+        "schema_version": 2,
         "task": TASK_ID,
         "checkpoint": str(checkpoint),
         "checkpoint_iteration": checkpoint_number(checkpoint),
@@ -187,10 +202,16 @@ def main() -> None:
         "episode_steps": episode_steps[: args.trials],
         "observed_max_spin_progress_deg": max_progress_deg[: args.trials],
         "videos": videos,
+        "rollout_diagnostics": diagnostics[: args.trials],
+        "evaluation_git_commit": subprocess.run(
+            ["git", "-C", str(Path(__file__).resolve().parents[1]), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=False,
+        ).stdout.strip() or None,
         "note": (
-            "observed_max_spin_progress_deg is a diagnostic read from the task "
-            "accumulator and may miss the terminal frame because the vectorized "
-            "environment auto-resets on timeout."
+            "Samples precede env.step and omit the terminal physics frame because "
+            "the environment auto-resets. Task spin progress integrates positive "
+            "world-Z angular velocity; it is not proof of a net 360-degree jump. "
+            "Diagnostics do not certify landing, safety, or deployment readiness."
         ),
     }
     summary_path = output_dir / "evaluation_summary.json"

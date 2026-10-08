@@ -41,3 +41,4 @@ logdir/.claude/worktrees/
 
 # namyikim/microduck local integration
 .ipynb_checkpoints/
+github_token.txt
