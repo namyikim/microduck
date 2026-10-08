@@ -32,14 +32,14 @@ jobs:
           mkdir -p /tmp/microduck-local/tests
 
           cp COLAB.md /tmp/microduck-local/COLAB.md
-          cp JUMP_SPIN.md /tmp/microduck-local/JUMP_SPIN.md
+          cp JUMP_SPIN.md /tmp/microduck-local/JUMP_SPIN.md\n          cp JUMP_SPIN_HF_RELEASE.md /tmp/microduck-local/JUMP_SPIN_HF_RELEASE.md
           cp MicroDuck_Colab_A100.ipynb /tmp/microduck-local/MicroDuck_Colab_A100.ipynb
           cp MicroDuck_JumpSpin_A100.ipynb /tmp/microduck-local/MicroDuck_JumpSpin_A100.ipynb
 
           cp scripts/setup_colab.sh /tmp/microduck-local/scripts/setup_colab.sh
           cp scripts/train_colab.sh /tmp/microduck-local/scripts/train_colab.sh
           cp scripts/progress_filter.py /tmp/microduck-local/scripts/progress_filter.py
-          cp scripts/render_jump_spin.py /tmp/microduck-local/scripts/render_jump_spin.py
+          cp scripts/render_jump_spin.py /tmp/microduck-local/scripts/render_jump_spin.py\n          cp scripts/prepare_jump_spin_release.py /tmp/microduck-local/scripts/prepare_jump_spin_release.py\n          cp scripts/publish_jump_spin_hf.py /tmp/microduck-local/scripts/publish_jump_spin_hf.py
 
           cp .github/workflows/import-upstream.yml /tmp/microduck-local/.github/workflows/import-upstream.yml
           cp .github/workflows/jump-spin-tests.yml /tmp/microduck-local/.github/workflows/jump-spin-tests.yml
@@ -79,14 +79,14 @@ jobs:
           mkdir -p tests
 
           cp /tmp/microduck-local/COLAB.md COLAB.md
-          cp /tmp/microduck-local/JUMP_SPIN.md JUMP_SPIN.md
+          cp /tmp/microduck-local/JUMP_SPIN.md JUMP_SPIN.md\n          cp /tmp/microduck-local/JUMP_SPIN_HF_RELEASE.md JUMP_SPIN_HF_RELEASE.md
           cp /tmp/microduck-local/MicroDuck_Colab_A100.ipynb MicroDuck_Colab_A100.ipynb
           cp /tmp/microduck-local/MicroDuck_JumpSpin_A100.ipynb MicroDuck_JumpSpin_A100.ipynb
 
           cp /tmp/microduck-local/scripts/setup_colab.sh scripts/setup_colab.sh
           cp /tmp/microduck-local/scripts/train_colab.sh scripts/train_colab.sh
           cp /tmp/microduck-local/scripts/progress_filter.py scripts/progress_filter.py
-          cp /tmp/microduck-local/scripts/render_jump_spin.py scripts/render_jump_spin.py
+          cp /tmp/microduck-local/scripts/render_jump_spin.py scripts/render_jump_spin.py\n          cp /tmp/microduck-local/scripts/prepare_jump_spin_release.py scripts/prepare_jump_spin_release.py\n          cp /tmp/microduck-local/scripts/publish_jump_spin_hf.py scripts/publish_jump_spin_hf.py
 
           cp /tmp/microduck-local/.github/workflows/import-upstream.yml .github/workflows/import-upstream.yml
           cp /tmp/microduck-local/.github/workflows/jump-spin-tests.yml .github/workflows/jump-spin-tests.yml
