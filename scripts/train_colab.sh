@@ -169,17 +169,15 @@ sync_loop() {
   done
 }
 
-LATEST=""
+# Always choose the checkpoint with the highest model_<iteration>.pt number.
+# The manifest is informational only; it must never override a newer manually
+# restored/uploaded checkpoint.
+LATEST="$(find_latest_checkpoint || true)"
 if [[ -f "$LATEST_MANIFEST" ]]; then
   MANIFEST_REL="$(cat "$LATEST_MANIFEST" 2>/dev/null || true)"
-  MANIFEST_LOCAL="$LOCAL_LOGS/$MANIFEST_REL"
-  if [[ -n "$MANIFEST_REL" && -f "$MANIFEST_LOCAL" ]]; then
-    LATEST="$MANIFEST_LOCAL"
-    echo "Using task-specific checkpoint manifest."
+  if [[ -n "$MANIFEST_REL" ]]; then
+    echo "Task checkpoint manifest (informational): $MANIFEST_REL"
   fi
-fi
-if [[ -z "$LATEST" ]]; then
-  LATEST="$(find_latest_checkpoint || true)"
 fi
 
 if [[ -z "$LATEST" && "$SMOKE_TEST" == "1" ]]; then
