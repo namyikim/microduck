@@ -6,6 +6,7 @@ EXPERIMENT_NAME="${EXPERIMENT_NAME:-}"
 NUM_ENVS="${NUM_ENVS:-4096}"
 TARGET_ITERS="${TARGET_ITERS:-6000}"
 SYNC_INTERVAL="${SYNC_INTERVAL:-60}"
+DRIVE_VERIFY_INTERVAL="${DRIVE_VERIFY_INTERVAL:-10}"
 RUN_NAME="${RUN_NAME:-colab-a100}"
 REPO_DIR="${REPO_DIR:-/content/microduck}"
 DRIVE_ROOT="${DRIVE_ROOT:-/content/drive/MyDrive/microduck-training}"
@@ -137,6 +138,12 @@ sync_checkpoint() {
   fi
 
   mv -f "$tmp" "$dst"
+  if [[ -f "$dst" ]]; then
+    echo "[Drive checkpoint] $(basename "$src") -> $dst"
+  else
+    echo "ERROR: Drive checkpoint copy failed: $dst" >&2
+    return 1
+  fi
 }
 
 sync_once() {
