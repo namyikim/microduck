@@ -105,3 +105,4 @@ uv run python scripts/render_jump_spin.py \
   --output-dir /tmp/jump-spin-videos \
   --trials 5
 ```
+\n\n## Hugging Face release\n\n학습 완료 후 모델 검증과 Hugging Face 배포 절차는 [JUMP_SPIN_HF_RELEASE.md](JUMP_SPIN_HF_RELEASE.md)를 따릅니다. 실제 업로드 전에 rollout 영상의 수동 검토가 필요합니다.\n
