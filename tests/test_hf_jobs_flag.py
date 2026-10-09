@@ -85,8 +85,11 @@ def test_train_on_path_is_a_mjlab_trainer():
 
 def test_we_register_the_task_plugin_entry_point():
     """The interception rides on this entry point; without it, no flag."""
-    groups = {ep.group: ep.value for ep in distribution("mjlab-microduck").entry_points}
-    assert groups.get("mjlab.tasks") == "mjlab_microduck.tasks", (
+    # More than one local task plugin may share the same group. Do not let
+    # a sibling (JumpSpin/SeatedGreeting) overwrite the required base plugin.
+    plugins = distribution("mjlab-microduck").entry_points
+    assert any(ep.group == "mjlab.tasks" and ep.name == "mjlab_microduck"
+               and ep.value == "mjlab_microduck.tasks" for ep in plugins), (
         "the `mjlab.tasks` entry point must stay pointed at mjlab_microduck.tasks: "
         "it is both how tasks register AND where --hf-jobs is intercepted."
     )

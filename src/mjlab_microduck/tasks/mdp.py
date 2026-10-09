@@ -7669,3 +7669,64 @@ def roulade_lateral_velocity_penalty(
     """Body-frame lateral (y) linear velocity² — keeps the roll straight."""
     asset: Entity = env.scene[asset_cfg.name]
     return torch.nan_to_num(asset.data.root_link_lin_vel_b[:, 1].pow(2), nan=0.0)
+
+
+# ── Seated greeting: small, smooth head commands; no airborne maneuver ──────
+class SeatedGreetingCommand(UniformPoseCommand):
+    """Commanded head motion, not an action filter. The actor still outputs raw actions."""
+    def __init__(self, cfg, env):
+        super().__init__(cfg, env)
+        self._gains = torch.ones(self.num_envs, 1, device=self.device)
+        self._small_offsets = torch.zeros(self.num_envs, 2, device=self.device)
+
+    def _resample_command(self, env_ids):
+        self._command[env_ids] = 0.
+        self._gains[env_ids] = 1.
+        self._small_offsets[env_ids] = 0.
+        if self.cfg.randomize_amplitude:
+            self._gains[env_ids] = .8 + .2*torch.rand(len(env_ids), 1, device=self.device)
+            # Keep neck/roll command weights alive with tiny, smoothly introduced offsets.
+            self._small_offsets[env_ids] = .02*(2*torch.rand(len(env_ids), 2, device=self.device)-1)
+
+    def _update_command(self):
+        from mjlab_microduck.seated_greeting import WAYPOINTS, DURATION_S
+        t = self._env.episode_length_buf * self._env.step_dt
+        self._command.zero_()
+        for a,b in zip(WAYPOINTS, WAYPOINTS[1:]):
+            u = torch.clamp((t-a[0])/(b[0]-a[0]), 0., 1.)
+            w = .5-.5*torch.cos(math.pi*u)
+            mask = (t >= a[0]) & (t < b[0])
+            for col,j in ((1,1),(2,2)):
+                self._command[:,col] += torch.where(mask, a[j]+w*(b[j]-a[j]), 0.)
+        self._command *= self._gains
+        envelope = torch.sin(math.pi*torch.clamp(t/DURATION_S,0.,1.))**2
+        self._command[:,0] = envelope*self._small_offsets[:,0]
+        self._command[:,3] = envelope*self._small_offsets[:,1]
+
+
+@_dataclass(kw_only=True)
+class SeatedGreetingCommandCfg(UniformPoseCommandCfg):
+    randomize_amplitude: bool = True
+
+    def build(self, env):
+        return SeatedGreetingCommand(self, env)
+
+
+def seated_greeting_head_contact_cost(env):
+    """Positive cost; fail loudly if the required sensor is absent."""
+    found = env.scene.sensors['head_ground_contact'].data.found
+    return (found.reshape(found.shape[0],-1)>0).any(dim=1).float()
+
+
+def seated_greeting_failed(env):
+    asset = env.scene['robot']
+    q = asset.data.root_link_quat_w
+    upright = 1.-2.*(q[:,1]**2+q[:,2]**2)
+    z = asset.data.root_link_pos_w[:,2]-env.scene.terrain.env_origins[:,2]
+    return ((seated_greeting_head_contact_cost(env)>0) | (upright < math.cos(math.radians(45)))
+            | (z > .10) | (z < .025) | ~torch.isfinite(z) | ~torch.isfinite(upright))
+
+
+def seated_greeting_tracking(env):
+    """Head tracking earns nothing while supported by the head or after a fall."""
+    return head_pose_tracking(env, std=.18, fine_std=.06) * (~seated_greeting_failed(env)).float()
