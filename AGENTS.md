@@ -25,6 +25,12 @@ uv run --with pytest pytest tests/
 A 5-iteration smoke test at 64 envs catches ~95% of config errors for cents.
 Never launch a long run without one.
 
+## Colab CLI execution
+
+Follow [agent.md](agent.md): always start Colab CLI training runtimes with
+`colab run --keep`. Never omit `--keep` from `colab run` or automatically stop
+the runtime after training.
+
 ## Repo map
 
 - `src/mjlab_microduck/tasks/mdp.py` — ALL custom MDP functions (rewards, events,
