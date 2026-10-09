@@ -9,6 +9,8 @@ This repository contains a snapshot of the official MicroDuck RL repository.
 
 ## Updating
 
-Run the **Import upstream microduck_rl** workflow from the Actions tab.
-It replaces the upstream source snapshot while preserving the Colab-specific files
-documented in [COLAB.md](COLAB.md).
+Read the [upstream maintenance guide](doc/maintenance.md#upstream-소스-관리)
+before running **Import upstream microduck_rl** from the Actions tab.
+The workflow replaces the source snapshot and restores only explicitly listed
+extensions; its preservation list must be reviewed for the current documentation
+and local changes first.
