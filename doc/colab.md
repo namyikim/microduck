@@ -59,6 +59,25 @@ microduck-training/
 
 JumpSpin 모델은 100회마다 저장하고, 기본 10초 주기로 Drive에 복사합니다. 동기화 주기와 모델 생성 주기는 다릅니다. 저장·복사가 끝나기 전에 런타임이 종료되면 마지막 백업 이후의 진행은 잃을 수 있습니다.
 
+### CLI에서 서버 진행 확인
+
+로컬 로그 출력이 멈춰도 서버 학습은 계속될 수 있습니다. [점검 스크립트](../scripts/colab_progress_check.py)는 별도 진단 커널로 GPU 상태, 실제 Drive 체크포인트, 10초 간격의 학습 iteration을 확인하고 진단 커널만 종료합니다. 학습 커널과 런타임은 유지합니다.
+
+`google-colab-cli`가 설치되고 로그인된 Python 환경에서 저장소 루트를 기준으로 실행합니다. 현재 Mac에 준비된 환경에서는 다음 명령을 사용합니다.
+
+```bash
+/private/tmp/microduck-colab-cli/bin/python scripts/colab_progress_check.py
+```
+
+인자를 생략하면 자동 점검이 관리하는 `/private/tmp/microduck_monitor_state.json`의 최신 `session` 값을 읽습니다. 런타임 복구 후에도 이전 세션명을 고정해서 사용하지 않습니다. 상태 파일이 없는 환경에서는 `colab sessions`로 확인한 실제 세션명을 직접 지정합니다.
+
+```bash
+/private/tmp/microduck-colab-cli/bin/colab sessions
+/private/tmp/microduck-colab-cli/bin/python scripts/colab_progress_check.py YOUR_SESSION_NAME
+```
+
+`CHECKING_SESSION`에서 선택한 세션을 확인할 수 있습니다. 진단 연결 오류만으로 학습 중단을 판단하지 말고 `colab usage`와 서버 진행을 함께 확인하세요. 위 `/private/tmp`의 Python 환경과 상태 파일은 이 Mac의 임시 운영 파일이며 저장소에 포함되지 않습니다.
+
 ## 세션 종료 후 복원
 
 노트북에서 Drive 연결과 설치를 다시 완료한 뒤 학습 셀을 실행합니다. 스크립트는 Drive 로그를 복원하고 **해당 실험 폴더 안에서** `model_숫자.pt`의 숫자가 가장 큰 체크포인트를 고릅니다. 내부 `iter` 값도 읽어 남은 횟수를 계산합니다.
