@@ -7,7 +7,7 @@ JumpSpin 최종 모델은 머리 접촉과 쓰러짐으로 실패했으며 이 �
 
 [Colab 노트북 열기](https://colab.research.google.com/github/namyikim/microduck/blob/main/MicroDuck_SeatedGreeting_A100.ipynb)
 
-### 내일 실행할 순서
+### 실행 순서
 
 1. Colab에서 A100 GPU를 선택합니다.
 2. 설정·Drive 연결·설치 셀을 실행합니다.
@@ -36,7 +36,11 @@ uv run python scripts/train_seated_greeting_colab.py --start-training
 
 장시간 학습 전에 **64환경에서 앉은 목표 자세를 3초 유지한 뒤 머리 동작 전체를 수행하는 물리 검증**을 통과해야 합니다. 기울기·높이·머리 접촉 중 하나라도 기준을 벗어나면 중단하고 `preflight.json`을 확인합니다. 이어서 64환경·5회 학습 및 공식 ONNX 내보내기·추론 검증을 수행합니다.
 
-GPU 물리 검증과 실제 학습 결과는 아직 확인 전입니다. 코드 테스트 통과와 실제 동작 성공은 다릅니다.
+2026-10-10 검증 결과: 자세 사전 검사와 3,000회 학습을 마쳤고 `model_2999.pt`의 평가 영상 5개가 모두 검사 기준을 통과했습니다. 사용자가 영상의 인사 동작도 확인했습니다. 평가 시 반복 reset 오류와 카메라 구도를 수정한 뒤 다시 기록한 결과입니다.
+
+공식 ONNX와 정규화가 포함된 PyTorch actor를 동일한 61차원 입력 3,505개로 비교한 최대 출력 차이는 `8.344650268554688e-7`입니다(허용 기준 `1e-4`). `scripts/infer_policy.py`의 CPU MuJoCo BAM M6 경로에서 50Hz, 필터 없는 액션으로 전압 6.5/7.4/8.2V, 초기 관절 오차, 1제어스텝 지연을 포함한 5개 시험을 통과했습니다. 머리 접촉 0회, 최대 몸통 기울기 3.064°였습니다. 실제 로봇 시험 결과는 아닙니다.
+
+Drive 결과: `evaluations/20261010T121442Z_recovery/`의 영상 5개, `closeup/`의 근접 영상, `deployment_validation/`의 CPU ONNX 영상·`validation_summary.json`. 원본 ONNX는 `evaluations/20261010T015638Z/policy.onnx`이며 검증 폴더에도 복사했습니다. 다음 동작은 [앉았다 일어서기](sitstand.md)로 별도 학습합니다.
 
 ### 저장 위치와 재개
 
@@ -62,11 +66,11 @@ Drive의 `microduck-training/seated_greeting_v1/` 안에 저장됩니다.
 
 The target is a **seated greeting**: look left, look right, return to center, nod twice, then rest seated. The failed JumpSpin model is not reused.
 
-Open the notebook on a later day, select A100, mount Drive, install dependencies, then explicitly set `START_TRAINING=True`. The default does not start training. No new schedule is created. Always use `colab run --keep` when creating a CLI runtime.
+To reproduce the experiment, open the notebook, select A100, mount Drive, install dependencies, then explicitly set `START_TRAINING=True`. The default does not start training. No new schedule is created. Always use `colab run --keep` when creating a CLI runtime.
 
 The new `Mjlab-SeatedGreeting-Flat-MicroDuck` task builds on the SitStand environment and its measured seated pose, BAM actuators and normalized 61D observations / 14D actions. It trains a new policy from scratch in `seated_greeting_v1`. The 14-second command uses small eased yaw (±15°) and pitch (8°) motions; the actor's actions remain unfiltered. It starts seated and does not teach sitting down, standing up or walking.
 
-Before the default 4,096-environment / 3,000-iteration run, the pipeline requires a 64-environment seated hold and head-motion physics preflight, then a 64-environment / 5-iteration smoke run and official normalized ONNX shape/inference checks. Failed preflight stops training. GPU physics and training are not yet verified; passing code tests does not establish a successful behavior.
+Before the default 4,096-environment / 3,000-iteration run, the pipeline requires a 64-environment seated hold and head-motion physics preflight, then a 64-environment / 5-iteration smoke run and official normalized ONNX shape/inference checks. Failed preflight stops training. On 2026-10-10, pose preflight and 3,000 training iterations completed; all five final evaluation videos passed the checks and were reviewed by the user. CPU BAM ONNX rehearsal also passed five trials spanning voltage, initial joint perturbations and one-step control delay. Across 3,505 identical inputs, the maximum PyTorch/ONNX action difference was 8.344650268554688e-7 (limit 1e-4); head contact was zero and maximum trunk tilt was 3.064°. These are simulation results, not hardware tests.
 
 Five videos, per-gesture tracking/contact/tilt checks, traces and ONNX are saved under `MyDrive/microduck-training/seated_greeting_v1/evaluations/<UTC timestamp>/`. Checkpoints resume only within this experiment. Inspect videos even when simulation checks pass.
 

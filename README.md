@@ -1,4 +1,4 @@
-# MicroDuck RL · Seated Greeting
+# MicroDuck RL · Greeting & SitStand
 
 [한국어](#한국어) · [English](#english)
 
@@ -8,11 +8,13 @@
 
 이 프로젝트는 소형 이족보행 로봇 **MicroDuck이 앉은 자세를 유지하면서 좌우를 보고, 정면에서 두 번 고개를 끄덕이는 인사 동작**을 학습하는 프로젝트입니다. 실제 로봇의 충격 부담을 줄이기 위해 공중 회전에서 작은 머리 움직임으로 목표를 변경했습니다.
 
-공식 [MicroDuck RL](https://github.com/pollen-robotics/microduck_rl)의 SitStand 환경을 바탕으로 Colab 학습, Drive 백업·재개, 자세 검증과 자동 평가를 구성했습니다. **학습과 실제 동작 검증은 아직 실행 전**입니다.
+공식 [MicroDuck RL](https://github.com/pollen-robotics/microduck_rl)의 SitStand 환경을 바탕으로 Colab 학습, Drive 백업·재개, 자세 검증과 자동 평가를 구성했습니다. 앉은 인사는 3,000회 학습 후 시뮬레이션 평가 영상 5개와 CPU ONNX 시험 5개를 통과했습니다. 다음 목표는 **서기 → 천천히 앉기 → 유지 → 다시 서기**입니다. 실제 로봇 시험은 하지 않았습니다.
 
 이전 JumpSpin 실험은 머리 접촉과 쓰러짐으로 실패했습니다. 기록과 코드는 보존하며 새 학습에는 해당 모델을 사용하지 않습니다.
 
 ### 실행 방법
+
+**다음 동작:** [천천히 앉았다 일어서기 학습](doc/sitstand.md)은 기존 SitStand 환경에서 별도 정책을 학습합니다. 아래 노트북은 완료된 앉은 인사 실험을 재현할 때 사용합니다.
 
 1. **[앉은 인사 학습 노트북 열기](https://colab.research.google.com/github/namyikim/microduck/blob/main/MicroDuck_SeatedGreeting_A100.ipynb)**
 2. Colab에서 **A100 GPU**를 선택하고 Drive 연결·설치 셀을 실행합니다.
@@ -39,7 +41,8 @@ Google Drive의 **내 드라이브 → `microduck-training`**에서 확인합니
 | 문서 | 내용 |
 |---|---|
 | [학습과 재개](doc/colab.md) | 설정, CLI의 `--keep`, Drive 백업, 체크포인트 복원, 로컬 실행 |
-| [앉은 인사](doc/seated-greeting.md) | 목표, 검증 조건, 내일 실행 방법 |
+| [앉은 인사](doc/seated-greeting.md) | 목표, 검증 결과, 실행 방법 |
+| [앉았다 일어서기](doc/sitstand.md) | 다음 동작, 사전 검사, 실행 명령과 결과 경로 |
 | [JumpSpin 설계](doc/jump-spin.md) | 목표 동작, 커리큘럼, 보상, 기존 실패 분석과 v2 변경 |
 | [평가와 진단](doc/evaluation.md) | 영상 확인, 기존 모델 재평가, 진단 JSON 해석 |
 | [ONNX와 Hugging Face 배포](doc/release.md) | 모델 내보내기, 검토용 패키지, 업로드 |
@@ -55,9 +58,11 @@ Google Drive의 **내 드라이브 → `microduck-training`**에서 확인합니
 
 This project trains **MicroDuck to stay seated, look left and right, and nod twice**. The target has shifted from airborne spinning to small head movements to reduce impact exposure on the physical robot.
 
-The new task builds on the official [MicroDuck RL](https://github.com/pollen-robotics/microduck_rl) SitStand environment, with Colab training, Drive backup/resume, pose preflight and automatic evaluation. **Training and physical behavior validation are still pending.** The previous JumpSpin experiment failed through head contact and collapse; its model is not reused.
+The new task builds on the official [MicroDuck RL](https://github.com/pollen-robotics/microduck_rl) SitStand environment, with Colab training, Drive backup/resume, pose preflight and automatic evaluation. The seated greeting completed 3,000 iterations and passed five simulation evaluations and five CPU ONNX trials. The next target is **stand → slowly sit → hold → stand**. No physical robot testing has been performed. The previous JumpSpin experiment failed through head contact and collapse; its model is not reused.
 
 ### How to run
+
+**Next motion:** [Gentle sit/stand training](doc/sitstand.md) trains a separate policy using the existing SitStand task. The notebook below reproduces the completed seated greeting experiment.
 
 1. **[Open the seated greeting notebook](https://colab.research.google.com/github/namyikim/microduck/blob/main/MicroDuck_SeatedGreeting_A100.ipynb).**
 2. Select **A100 GPU**, mount Drive, and run installation.
@@ -87,6 +92,7 @@ The guides below are maintained in Korean, with command examples and original te
 |---|---|
 | [Training and resume](doc/colab.md) | Configuration, CLI `--keep`, Drive backups, recovery, local commands |
 | [Seated greeting](doc/seated-greeting.md) | Target, checks, execution and results |
+| [Gentle sit/stand](doc/sitstand.md) | Next motion, preflight, commands and output paths |
 | [JumpSpin design](doc/jump-spin.md) | Target maneuver, curriculum, rewards, prior failure analysis, v2 changes |
 | [Evaluation and diagnostics](doc/evaluation.md) | Video review, checkpoint evaluation, diagnostic JSON |
 | [ONNX and Hugging Face release](doc/release.md) | Export, review package, upload |
