@@ -38,6 +38,10 @@ def main():
     cfg.episode_length_s=DURATION_S+5
     cfg.terminations.pop('greeting_failed')
     cfg.viewer.width=args.width;cfg.viewer.height=args.height
+    # Frame the seated robot closely enough to inspect the small head gestures.
+    cfg.viewer.distance=.7
+    cfg.viewer.lookat=(0.,0.,.04)
+    cfg.viewer.elevation=-15.
     if args.preflight:
         cfg.events['set_ground_state'].params.update(sitting_joint_noise_std=.02,sitting_tilt_max=math.radians(2))
     raw=ManagerBasedRlEnv(cfg=cfg,device='cuda:0',render_mode=None if args.preflight else 'rgb_array')
@@ -94,7 +98,8 @@ def main():
                                          head_error_rad=max(abs(a-b) for a,b in zip(actual,command))))
                         if step%5==0: writer.append_data(raw.render())
                         if step==round(DURATION_S/raw.step_dt): break
-                        with torch.inference_mode(): obs,_,dones,_=env.step(policy(obs))
+                        # Delay buffers must remain mutable by the next trial's reset.
+                        with torch.no_grad(): obs,_,dones,_=env.step(policy(obs))
                         if bool(dones.any()): break
                 assessment=assess_greeting(rows)
                 assessment.update(trial=trial,video=str(video))
